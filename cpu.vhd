@@ -345,4 +345,3 @@ architecture behavioral of cpu is
 
 
 end behavioral;
-
