@@ -56,25 +56,25 @@ architecture behavioral of cpu is
 
   -- 
 	type fsm_state is (
-		fsm_start,
-		fsm_fetch,
-		fsm_decode, --decode data on prog pointer
-		fsm_value_inc,fsm_value_inc1,fsm_value_inc2,fsm_value_inc3,--states to handle incrementation
-		fsm_value_dec,fsm_value_dec1,fsm_value_dec2, --states to handle decrementation
-		fsm_pointer_inc, -- inc pointer
-		fsm_pointer_dec, -- dec pointer
-		fsm_while_condition, --checks condition
-		fsm_while_skip, --skip in case condition = 0
-		fsm_while_repeat, --move pointer until [
-		fsm_while_end, --check condition 
-    fsm_do_while_end, --check condition
-    fsm_do_while_repeat, --move back pointer until )
-		fsm_input, fsm_input2,
-		fsm_print, fsm_print2, fsm_print3, 
-		fsm_null
+		start_s,
+		fetch_s,
+		decode_s, --decode data on prog pointer
+		value_inc_s,value_inc1_s,value_inc2_s,value_inc3_s,--states to handle incrementation
+		value_dec_s,value_dec1_s,value_dec2_s, --states to handle decrementation
+		pointer_inc_s, -- inc pointer
+		pointer_dec_s, -- dec pointer
+		while_condition_s, --checks condition
+		while_skip_s, --skip in case condition = 0
+		while_repeat_s, --move pointer until [
+		while_end_s, --check condition 
+    do_while_end_s, --check condition
+    do_while_repeat_s, --move back pointer until )
+		input_s, input2_s,
+		print_s, print2_s, print3_s, 
+		null_s
 	);
-	signal state  : fsm_state := fsm_start;
-	signal nstate : fsm_state := fsm_start;
+	signal state  : fsm_state := start_s;
+	signal nstate : fsm_state := start_s;
 
   begin
 
@@ -121,7 +121,7 @@ architecture behavioral of cpu is
   state_logic: process (CLK, RESET, EN) is
     begin
       if RESET = '1' then
-        state <= fsm_start;
+        state <= start_s;
       elsif rising_edge(CLK) then
         if EN = '1' then
           state <= nState;
@@ -142,200 +142,200 @@ architecture behavioral of cpu is
       -- OUT_DATA <= (others => '0');
 
         case state is
-          when fsm_start =>
-            nState <= fsm_fetch;
-          when fsm_fetch =>
+          when start_s =>
+            nState <= fetch_s;
+          when fetch_s =>
             mx1_sel <= '0'; -- get prog data
             DATA_EN <= '1'; -- read new
-            nState <= fsm_decode;
-          when fsm_decode =>
+            nState <= decode_s;
+          when decode_s =>
             DATA_EN <= '1'; -- read prog data
             case DATA_RDATA is
               when x"3E" => -- >
-                nState <= fsm_pointer_inc;
+                nState <= pointer_inc_s;
               when x"3C" => -- <
-                nState <= fsm_pointer_dec;
+                nState <= pointer_dec_s;
               when x"2B" => -- +
-                nState <= fsm_value_inc;
+                nState <= value_inc_s;
               when x"2D" => -- -
-                nState <= fsm_value_dec;
+                nState <= value_dec_s;
               when x"5B" => -- [
                 mx1_sel <= '1'; --get ptr data
                 DATA_EN <= '1'; --read ptr data
-                nState <= fsm_while_condition;
+                nState <= while_condition_s;
               when x"5D" => -- ]
                 mx1_sel <= '1'; --get ptr data
                 DATA_EN <= '1'; --read ptr data
-                nState <= fsm_while_end;
+                nState <= while_end_s;
               when x"28" => -- (
                 prog_inc <= '1'; -- do first
-                nState <= fsm_fetch;
+                nState <= fetch_s;
               when x"29" => -- )
                 mx1_sel <= '1'; --get ptr data
                 DATA_EN <= '1'; --read ptr data
-                nState <= fsm_do_while_end;
+                nState <= do_while_end_s;
               when x"2E" => -- .
-                nState <= fsm_print;
+                nState <= print_s;
               when x"2C" => -- ,
-                nState <= fsm_input;
+                nState <= input_s;
               when x"00" => -- NULL
-                nState <= fsm_null;
+                nState <= null_s;
               when others => -- skip anything else
                 prog_inc <= '1';
-                nState <= fsm_fetch;
+                nState <= fetch_s;
             end case;
       
-          when fsm_pointer_inc =>
+          when pointer_inc_s =>
             prog_inc  <= '1';
             ptr_inc <= '1';
-            nState  <= fsm_fetch;
+            nState  <= fetch_s;
             
-          when fsm_pointer_dec =>
+          when pointer_dec_s =>
             prog_inc  <= '1';
             ptr_dec <= '1';
-            nState  <= fsm_fetch;
+            nState  <= fetch_s;
     
-          when fsm_value_inc =>
+          when value_inc_s =>
             mx1_sel <= '1'; -- look at data
-            nState <= fsm_value_inc1;
+            nState <= value_inc1_s;
           
-          when fsm_value_inc1 =>
+          when value_inc1_s =>
             DATA_EN <= '1';
             DATA_RDWR <= '0'; --get cur data 
-            nState    <= fsm_value_inc2;
+            nState    <= value_inc2_s;
 
-          when fsm_value_inc2 =>
+          when value_inc2_s =>
             DATA_EN <= '1';
             DATA_RDWR <= '0'; --get cur data 
             mx2_sel <= "01"; --inc
-            nState    <= fsm_value_inc3;
+            nState    <= value_inc3_s;
             
-          when fsm_value_inc3 =>
+          when value_inc3_s =>
             DATA_EN <= '1';
-            DATA_RDWR <= '1'; --print cur data
+            DATA_RDWR <= '1'; --write cur data
             prog_inc  <= '1'; -- next 
-            nState  <= fsm_fetch;
+            nState  <= fetch_s;
     
-          when fsm_value_dec =>
+          when value_dec_s =>
             mx1_sel <= '1'; -- look at data
             DATA_EN <= '1';
-            nState <= fsm_value_dec1;
+            nState <= value_dec1_s;
 
-          when fsm_value_dec1 =>
+          when value_dec1_s =>
             mx2_sel <= "10"; --dec
             DATA_EN <= '1';
-            nState    <= fsm_value_dec2;
+            nState    <= value_dec2_s;
 
-          when fsm_value_dec2 =>
+          when value_dec2_s =>
             DATA_EN <= '1'; 
-            DATA_RDWR <= '1'; --print
+            DATA_RDWR <= '1'; --write
             prog_inc <= '1'; --next
-            nState  <= fsm_fetch;
+            nState  <= fetch_s;
     
-          when fsm_print =>
+          when print_s =>
             mx1_sel <= '1'; --look at data
             DATA_EN <= '1';
             DATA_RDWR <= '0'; --get
-            nState  <= fsm_print2;
+            nState  <= print2_s;
     
-          when fsm_print2 =>
+          when print2_s =>
             DATA_EN <= '1';
             DATA_RDWR <= '0'; --get
             if OUT_BUSY = '1' then --wait until not busy 
               DATA_EN <= '1'; 
               DATA_RDWR <= '0';
-              nState  <= fsm_print2;
+              nState  <= print2_s;
             else
               OUT_DATA <= DATA_RDATA; --printout
               OUT_WE <= '1'; -- enable writing
               prog_inc <= '1'; -- next
-              nState <= fsm_fetch;
+              nState <= fetch_s;
             end if;
 
-          when fsm_input =>
+          when input_s =>
             mx1_sel <= '1'; -- get data
             mx2_sel <= "00"; -- data fom input
-            nState    <= fsm_input2;
+            nState    <= input2_s;
 
-          when fsm_input2 =>
+          when input2_s =>
             IN_REQ    <= '1'; 
             if IN_VLD = '1' then -- wait until valid
               DATA_EN <= '1';
               DATA_RDWR <= '1'; --write&update
               prog_inc <= '1'; --next
-              nState <= fsm_fetch;
+              nState <= fetch_s;
               else
-              nState <= fsm_input2; --get back & req data
+              nState <= input2_s; --get back & req data
             end if;
     
-          when fsm_while_condition =>
+          when while_condition_s =>
             DATA_EN <= '1'; --read ptr data
             if DATA_RDATA = "00000000" then --when value is zero skip until ]
               mx1_sel <= '0'; --get prog data
-              nState  <= fsm_while_skip;
+              nState  <= while_skip_s;
             else
               prog_inc <= '1'; --move pointer
-              nState  <= fsm_fetch;
+              nState  <= fetch_s;
             end if;
             
-          when fsm_while_skip => --skip 
+          when while_skip_s => --skip 
             DATA_EN <= '1'; --read prog data
             prog_inc <= '1'; -- move pointer
             if DATA_RDATA = x"5D" then --check for closing parse
-              nState  <= fsm_fetch; --continue with the program
+              nState  <= fetch_s; --continue with the program
             else
-              nState <= fsm_while_skip;
+              nState <= while_skip_s;
             end if;
             
-            when fsm_while_end =>
+          when while_end_s =>
             mx1_sel <= '1';--get prog data
             DATA_EN <= '1'; --read ptr data
             if DATA_RDATA = "00000000" then --continue with program
               prog_inc <= '1'; --move pointer
-              nState <= fsm_fetch;  
+              nState <= fetch_s;  
             else
               mx1_sel <= '0';--get prog data
-              nState <= fsm_while_repeat;
+              nState <= while_repeat_s;
             end if;
             
-          when fsm_while_repeat =>
+          when while_repeat_s =>
             DATA_EN <= '1';
             if DATA_RDATA = x"5B" then --if [ start again  
               prog_inc <= '1';
-              nState <= fsm_fetch;
+              nState <= fetch_s;
             else
               prog_dec <= '1';
               mx1_sel <= '1';--get prog data
-              nState <= fsm_while_end;
+              nState <= while_end_s;
             end if;            
             
-          when fsm_do_while_end =>
+          when do_while_end_s =>
             DATA_EN <= '1'; --read ptr data
             if DATA_RDATA = "00000000" then --continue with program
               prog_inc <= '1'; --move pointer
-              nState <= fsm_fetch;  
+              nState <= fetch_s;  
             else
               mx1_sel <= '0';--get prog data
-              nState <= fsm_do_while_repeat;
+              nState <= do_while_repeat_s;
             end if;
             
-            when fsm_do_while_repeat =>
+          when do_while_repeat_s =>
               DATA_EN <= '1';
             if DATA_RDATA = x"28" then --if ( start fetching again
               prog_inc <= '1';
-              nState <= fsm_fetch;
+              nState <= fetch_s;
             else
               prog_dec <= '1';
-              nState <= fsm_do_while_repeat;  -- move back until (
+              nState <= do_while_repeat_s;  -- move back until (
             end if;            
             
-          when fsm_null =>
+          when null_s =>
             if RESET = '1' then
-              nState <= fsm_start;
+              nState <= start_s;
             end if;
 
           when others =>
-            nState <= fsm_null;
+            nState <= null_s;
         end case;
 
   end process;
